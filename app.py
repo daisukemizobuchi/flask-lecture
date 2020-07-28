@@ -39,6 +39,10 @@ def dbtest():
     print(user_info)
     return render_template('dbtest.html',db_userinfo = user_info)
 
+#ここからTODOアプリ
+@app.route('/add')
+def add_get():
+    return render_template('add.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
