@@ -1,6 +1,7 @@
-from flask import Flask,render_template,request,redirect
+from flask import Flask,render_template,request,redirect,session
 import sqlite3
 app = Flask(__name__)
+app.secret_key ="sunabaco"
 
 @app.route('/')
 def hello_world():
@@ -42,8 +43,10 @@ def dbtest():
 #ここからTODOアプリ
 @app.route('/add')
 def add_get():
-    return render_template('add.html')
-
+    if "user_id" in session:
+        return render_template('add.html')
+    else:
+        return redirect('/login')
 @app.route('/add',methods=['post'])
 def app_post():
     py_task =request.form.get("task")
@@ -56,6 +59,7 @@ def app_post():
 
 @app.route('/list')
 def task_list():
+  if "user_id" in session:
     conn = sqlite3.connect('flasktest.db')
     c = conn.cursor()
     c.execute("SELECT id , task FROM task")
@@ -65,9 +69,12 @@ def task_list():
     c.close()
     print(task_list_py)
     return render_template("tasklist.html",task_list = task_list_py)
+  else:
+    return redirect('/login')
 
 @app.route("/edit/<int:id>")
 def edit(id):
+   if "user_id" in session: 
     conn = sqlite3.connect('flasktest.db')
     c = conn.cursor()
     c.execute("SELECT task FROM task WHERE id = ?",(id,))
@@ -80,6 +87,9 @@ def edit(id):
         task =py_task[0]
         py_item ={"dic_id":id,"dic_task":task}
         return render_template("edit.html",html_task = py_item)
+   else:
+    return redirect('/login')
+
     
 @app.route("/edit",methods=['POST'])
 def update_task():
@@ -94,6 +104,63 @@ def update_task():
     c.close()
     return redirect('/list')
 
+@app.route("/del/<int:id>")
+def delete(id):
+   if "user_id" in session:  
+    conn =sqlite3.connect('flasktest.db')
+    c = conn.cursor()
+    c.execute("DELETE FROM task WHERE id =?",(id,))
+    conn.commit()
+    return redirect('/list')
+   else:
+    return redirect('/login')
+
+
+@app.route('/regist')
+def regist_get():
+    if "user_id" in session:
+        return redirect('list')
+    else:
+        return render_template('regist.html')
+    
+
+@app.route('/regist',methods=["POST"])
+def regist_post():
+    py_name = request.form.get("member_name")
+    py_password = request.form.get("member_password")
+    conn = sqlite3.connect('flasktest.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO member VALUES (null,?,?)",(py_name,py_password))
+    conn.commit()
+    c.close()
+    return redirect ('/login')
+
+@app.route('/login')
+def login_get():
+    if "user_id" in session:
+        return redirect('/list')
+    else:
+        return render_template('login.html')
+
+@app.route('/login',methods=["POST"])
+def login_post():
+    py_name = request.form.get("member_name")
+    py_password = request.form.get("member_password")
+    conn = sqlite3.connect('flasktest.db')
+    c = conn.cursor()
+    c.execute("SELECT id FROM member WHERE name = ? AND password = ?",(py_name,py_password))
+    user_id = c.fetchone()
+    c.close()
+    if user_id is None:
+        return render_template('/login.html')
+    else:
+        session["user_id"]=user_id
+        return redirect("/list")
+    
+@app.route('/logout')
+def logout():
+    session.pop("user_id",None)
+    return redirect("/login")
 
 @app.errorhandler(404)
 def notfound(code):
