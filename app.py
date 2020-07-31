@@ -52,7 +52,8 @@ def app_post():
     py_task =request.form.get("task")
     conn = sqlite3.connect('flasktest.db')
     c = conn.cursor()
-    c.execute("INSERT INTO task VALUES (null,?)",(py_task,))
+    user_id =session["user_id"][0]
+    c.execute("INSERT INTO task VALUES (null,?,?)",(py_task,user_id))
     conn.commit()
     conn.close()
     return redirect('/list')
@@ -60,15 +61,18 @@ def app_post():
 @app.route('/list')
 def task_list():
   if "user_id" in session:
+    user_id_py =session["user_id"][0]
     conn = sqlite3.connect('flasktest.db')
     c = conn.cursor()
-    c.execute("SELECT id , task FROM task")
+    c.execute("SELECT name FROM member WHERE id =?",(user_id_py,))
+    user_name_py =c.fetchone()[0]
+    c.execute("SELECT id , task FROM task WHERE user_id = ?",(user_id_py,))
     task_list_py =[]
     for row in c.fetchall():
         task_list_py.append({"id":row[0],"task":row[1]})
     c.close()
     print(task_list_py)
-    return render_template("tasklist.html",task_list = task_list_py)
+    return render_template("tasklist.html",task_list = task_list_py ,user_name=user_name_py)
   else:
     return redirect('/login')
 
@@ -119,7 +123,7 @@ def delete(id):
 @app.route('/regist')
 def regist_get():
     if "user_id" in session:
-        return redirect('list')
+        return redirect('/list')
     else:
         return render_template('regist.html')
     
@@ -130,7 +134,7 @@ def regist_post():
     py_password = request.form.get("member_password")
     conn = sqlite3.connect('flasktest.db')
     c = conn.cursor()
-    c.execute("INSERT INTO member VALUES (null,?,?)",(py_name,py_password))
+    c.execute("INSERT INTO member VALUES (null,?,?)",(py_name,py_password,))
     conn.commit()
     c.close()
     return redirect ('/login')
@@ -148,7 +152,7 @@ def login_post():
     py_password = request.form.get("member_password")
     conn = sqlite3.connect('flasktest.db')
     c = conn.cursor()
-    c.execute("SELECT id FROM member WHERE name = ? AND password = ?",(py_name,py_password))
+    c.execute("SELECT id FROM member WHERE name = ? AND password = ?",(py_name,py_password,))
     user_id = c.fetchone()
     c.close()
     if user_id is None:
